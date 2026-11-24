@@ -120,15 +120,16 @@
   /* tela de resultados */
   .cases{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .cases::-webkit-scrollbar{display:none}
-  .case{flex:0 0 100%;scroll-snap-align:center;position:relative}
-  .case .ph{position:relative;height:96px;border-radius:16px;overflow:hidden;background:#222}
-  .case img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(1.05) contrast(1.05)}
-  .case .ph::after{content:"";position:absolute;inset:0;border-radius:16px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
-                   background:linear-gradient(180deg,rgba(7,8,10,0) 40%,rgba(7,8,10,.35))}
-  .case .body{padding:16px 6px 4px}
-  .case strong{display:block;font-family:var(--f-title);font-weight:700;font-size:22px;line-height:1.18;color:var(--text);text-wrap:balance}
-  .case span{display:inline-flex;align-items:center;gap:6px;justify-content:center;font-size:14px;color:var(--muted);margin-top:8px}
-  .case span svg{width:14px;height:14px;color:var(--gold-2)}
+  .case{flex:0 0 100%;scroll-snap-align:center;position:relative;height:192px;border-radius:18px;overflow:hidden;background:#000}
+  .case img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:.38;filter:saturate(1.1)}
+  .case::after{content:"";position:absolute;inset:0;border-radius:18px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);
+               background:radial-gradient(ellipse at center,rgba(0,0,0,.15),rgba(0,0,0,.55))}
+  .case .body{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 20px}
+  .case span{display:inline-flex;align-items:center;gap:6px;justify-content:center;font-size:13px;color:#e9e6df;margin-bottom:10px;
+             background:rgba(0,0,0,.45);padding:6px 11px;border-radius:99px}
+  .case span svg{width:13px;height:13px;color:var(--gold-2)}
+  .case strong{display:block;font-family:var(--f-title);font-weight:700;font-size:23px;line-height:1.18;color:#fff;text-wrap:balance;
+               text-shadow:0 2px 14px rgba(0,0,0,.6)}
   .dots{display:flex;justify-content:center;gap:6px;margin-top:12px}
   .dots i{width:7px;height:7px;border-radius:99px;background:var(--line);transition:width .3s,background .3s}
   .dots i.on{width:22px;background:var(--gold-2)}
@@ -372,8 +373,8 @@ function px(ev, data, opts){ if (window.fbq) opts ? fbq(...ev, data || {}, opts)
 const PIN = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 00-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 00-7-7zm0 9.5A2.5 2.5 0 1112 6.5a2.5 2.5 0 010 5z"/></svg>';
 const casos = CONFIG.CASOS.filter(c => c.resultado);
 $("#cases").innerHTML = casos.map(c =>
-  `<article class="case"><div class="ph"><img src="${c.foto}" alt="${c.loja}" loading="lazy"></div>
-   <div class="body"><strong>${c.resultado}</strong>${c.local ? `<span>${PIN}${c.local}</span>` : ""}</div></article>`).join("");
+  `<article class="case"><img src="${c.foto}" alt="${c.loja}" loading="lazy">
+   <div class="body">${c.local ? `<span>${PIN}${c.local}</span>` : ""}<strong>${c.resultado}</strong></div></article>`).join("");
 $("#dots").innerHTML = casos.length > 1 ? casos.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("") : "";
 const casesEl = $("#cases");
 casesEl.addEventListener("scroll", () => {
