@@ -256,7 +256,7 @@
         <div class="msg" id="cidadeMsg"></div>
       </div>
       <p class="legal">Ao continuar, você aceita a <a href="https://privacidade.oquirondigital.com.br" target="_blank" rel="noopener">Política de Privacidade</a>.</p>
-      <button class="btn" id="contatoNext">Continuar</button>
+      <button class="btn" id="contatoNext">Enviar</button>
     </section>
 
     <!-- 7 · ANÚNCIOS -->
@@ -316,8 +316,8 @@
    CONFIGURAÇÃO — preencher antes de publicar
    ========================================================= */
 const CONFIG = {
-  WEBHOOK_URL: "",            // ex: "https://n8n.oquirondigital.com.br/webhook/form-lojas-iphone"
-  PIXEL_ID: "",               // pixel/conjunto de dados da Oquíron
+  WEBHOOK_URL: "https://n8n.oquirondigital.com.br/webhook/form-lojas", // n8n: CRM · Formulário próprio (lojas de iPhone)
+  PIXEL_ID: "1157479061759638", // conjunto de dados "Oquíron Digital {100%}"
   WHATSAPP: "5549999414937",  // Gustavo
   CATEGORIA: "Lojas de celular",
 
@@ -336,11 +336,11 @@ const CONFIG = {
 };
 
 /* ========================================================= */
-const ORDER = ["intro","motivo","funcao","canal","volume","prova","instagram","contato","anuncios","desafio"];
-const Q_STEPS = ["motivo","funcao","canal","volume","instagram","contato","anuncios","desafio"];
+const ORDER = ["intro","motivo","funcao","canal","volume","prova","instagram","anuncios","desafio","contato"];
+const Q_STEPS = ["motivo","funcao","canal","volume","instagram","anuncios","desafio","contato"];
 const state = {
   lead_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
-  answers:{}, contato:{}, sentPartial:false, sentFinal:false, history:["intro"]
+  answers:{}, contato:{}, sent:false, history:["intro"]
 };
 const $ = s => document.querySelector(s);
 const screens = {}; document.querySelectorAll(".screen").forEach(s => screens[s.dataset.step] = s);
@@ -394,7 +394,7 @@ function show(step, backwards){
   $("#progress").classList.toggle("show", showBar);
   $("#bar").style.width = step === "fim" ? "100%" : pos > 0 ? (pos / ORDER.length * 100) + "%" : "0";
   $("#stepCount").textContent = qi >= 0 ? `${qi + 1} / ${Q_STEPS.length}` : "";
-  const lockedBack = step === "intro" || step === "fim" || (state.sentPartial && ORDER.indexOf(step) <= ORDER.indexOf("anuncios"));
+  const lockedBack = step === "intro" || step === "fim";
   $("#backBtn").classList.toggle("show", !lockedBack);
   if (step === "prova") startCarousel();
   window.scrollTo(0,0);
@@ -418,7 +418,6 @@ document.querySelectorAll(".opts").forEach(group => {
     btn.classList.add("sel"); state.answers[field] = btn.dataset.value;
     setTimeout(() => {
       if (field === "motivo" && btn.dataset.value !== "loja") { go("saida"); return; }
-      if (field === "desafio") { finish(); return; }
       next();
     }, 240);
   }));
@@ -427,7 +426,7 @@ $("#saidaVoltar").addEventListener("click", () => { state.history.pop(); show("m
 $("#saidaIgVoltar").addEventListener("click", () => {
   noIg.checked = false; igRefresh(); state.history.pop(); show("instagram", true);
 });
-$("#skipDesafio").addEventListener("click", () => { state.answers.desafio = "pulou"; finish(); });
+$("#skipDesafio").addEventListener("click", () => { state.answers.desafio = "pulou"; next(); });
 
 /* ---------- Instagram ---------- */
 const JUNK = new Set(["sim","nao","não","ok","teste","test","nenhum","nenhuma","naotenho","nãotenho","obrigado","obrigada",
@@ -475,9 +474,7 @@ $("#contatoNext").addEventListener("click", () => {
   ].every(Boolean);
   if (!ok) return;
   state.contato = { nome, whatsapp:"+55" + wa.value.replace(/\D/g,""), cidade };
-  send("parcial");
-  px(["track","Lead"], { content_name:"Form Lojas iPhone" }, { eventID: state.lead_id });
-  next();
+  finish();
 });
 document.querySelectorAll("#nome,#wa,#cidade").forEach(i => i.addEventListener("keydown", e => { if (e.key === "Enter") $("#contatoNext").click(); }));
 
@@ -497,20 +494,20 @@ function payload(etapa){
     contato:state.contato, respostas:state.answers, sugestao_classificacao:sugestao(),
     rastreio:{ ...tracking, fbp:cookie("_fbp"), fbc:fbc(), pagina:location.href.split("?")[0], user_agent:navigator.userAgent } };
 }
-function beacon(body){ navigator.sendBeacon && navigator.sendBeacon(CONFIG.WEBHOOK_URL, new Blob([body],{type:"application/json"})); }
-function send(etapa){
-  if (etapa === "parcial") state.sentPartial = true;
-  if (etapa === "completo") state.sentFinal = true;
-  const body = JSON.stringify(payload(etapa));
-  if (!CONFIG.WEBHOOK_URL) { console.info("[form] WEBHOOK_URL vazio — payload:", JSON.parse(body)); return; }
-  try { fetch(CONFIG.WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body,keepalive:true}).catch(() => beacon(body)); }
-  catch(e){ beacon(body); }
+// Envia como formulário (campo "payload"): é um envio "simples", sem preflight de CORS, e funciona com sendBeacon.
+function send(){
+  if (state.sent) return; state.sent = true;
+  const body = new URLSearchParams({ payload: JSON.stringify(payload("completo")) });
+  if (!CONFIG.WEBHOOK_URL) { console.info("[form] WEBHOOK_URL vazio — payload:", payload("completo")); return; }
+  let ok = false;
+  try { ok = navigator.sendBeacon && navigator.sendBeacon(CONFIG.WEBHOOK_URL, body); } catch(e) {}
+  if (!ok) { try { fetch(CONFIG.WEBHOOK_URL, { method:"POST", mode:"no-cors", body, keepalive:true }); } catch(e) {} }
 }
-addEventListener("pagehide", () => { if (state.sentPartial && !state.sentFinal) send("abandonou"); });
 
 function finish(){
-  send("completo");
-  px(["trackCustom","FormularioCompleto"], {}, { eventID: state.lead_id + "-fim" });
+  send();
+  // Lead só para quem não parece lixo (o n8n faz a mesma regra na CAPI, com o mesmo ID para não contar em dobro)
+  if (sugestao() !== "descartar") px(["track","Lead"], { content_name:"Form Lojas iPhone" }, { eventID: state.lead_id });
   $("#fimTitulo").textContent = `Recebemos, ${state.contato.nome.split(" ")[0]}!`;
   const igTxt = state.answers.instagram ? ` da ${state.answers.instagram}` : "";
   const msg = `Olá! Sou ${state.contato.nome}${igTxt}, de ${state.contato.cidade}. Acabei de responder o formulário e quero a análise da minha loja.`;
