@@ -297,6 +297,13 @@
       <button class="btn ghost" id="saidaVoltar">Marquei errado, voltar</button>
     </section>
 
+    <!-- SAÍDA · SEM INSTAGRAM -->
+    <section class="screen" data-step="saida_ig">
+      <h2>Quase lá!</h2>
+      <p class="sub">Para anunciar, sua loja precisa de um Instagram ativo.<br>Quando criar o perfil, é só voltar aqui.</p>
+      <button class="btn ghost" id="saidaIgVoltar">Marquei errado, voltar</button>
+    </section>
+
   </main>
   <div class="foot">Oquíron Digital · CNPJ 45.910.140/0001-35</div>
 </div>
@@ -414,6 +421,9 @@ document.querySelectorAll(".opts").forEach(group => {
   }));
 });
 $("#saidaVoltar").addEventListener("click", () => { state.history.pop(); show("motivo", true); });
+$("#saidaIgVoltar").addEventListener("click", () => {
+  noIg.checked = false; igRefresh(); state.history.pop(); show("instagram", true);
+});
 $("#skipDesafio").addEventListener("click", () => { state.answers.desafio = "pulou"; finish(); });
 
 /* ---------- Instagram ---------- */
@@ -436,7 +446,7 @@ function igRefresh(){
 ig.addEventListener("input", igRefresh); noIg.addEventListener("change", igRefresh);
 ig.addEventListener("keydown", e => { if (e.key === "Enter" && !igNext.disabled) igNext.click(); });
 igNext.addEventListener("click", () => {
-  if (noIg.checked){ Object.assign(state.answers,{instagram:"",sem_instagram:true,instagram_suspeito:false}); }
+  if (noIg.checked){ state.answers.sem_instagram = true; go("saida_ig"); return; }
   else { const s = igStatus(ig.value); Object.assign(state.answers,{instagram:"@"+s.handle,sem_instagram:false,instagram_suspeito:s.junk}); }
   next();
 });
