@@ -229,8 +229,6 @@
       <div class="cases" id="cases"></div>
       <div class="dots" id="dots"></div>
       <div id="quotes"></div>
-      <div class="label">Lojas que anunciam com a gente</div>
-      <div class="marquee"><div class="track" id="marquee"></div></div>
       <button class="btn" data-next>Continuar</button>
     </section>
 
@@ -333,8 +331,6 @@ const CONFIG = {
   DEPOIMENTOS: [
     // { texto: "...", autor: "Fulano · National Imports" }
   ],
-  // Lojas exibidas na faixa animada (só quem autorizou).
-  LOJAS: ["ChapeCell","National Imports","TopCel","DinhoCel","AiCell","Playtech","Águia Cell Shop","InnovaTech","Mafetto Imports"],
   // Prova curta sob as perguntas.
   CASES: [
     { sigla:"NI", loja:"National Imports", cidade:"Ponta Grossa/PR" },
@@ -393,8 +389,6 @@ function startCarousel(){
 casesEl.addEventListener("pointerdown", () => clearInterval(autoTimer));
 $("#quotes").innerHTML = CONFIG.DEPOIMENTOS.map(d =>
   `<div class="quote"><p>“${d.texto}”</p><cite>${d.autor}</cite></div>`).join("");
-const lojas = CONFIG.LOJAS.map(l => `<span>${l}</span>`).join("");
-$("#marquee").innerHTML = lojas + lojas;
 let ci = 0;
 document.querySelectorAll(".proof-slot").forEach(slot => {
   const c = CONFIG.CASES[ci++ % CONFIG.CASES.length]; if (!c) return;
