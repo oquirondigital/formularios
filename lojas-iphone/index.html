@@ -118,15 +118,20 @@
   .proof .ok{color:var(--green);font-family:var(--f-title)}
 
   /* tela de resultados */
-  .results{display:grid;gap:10px;margin-bottom:8px}
-  .res{background:var(--cream);color:var(--ink);border-radius:var(--r);padding:18px 16px;position:relative;overflow:hidden}
-  .res strong{display:block;font-family:var(--f-title);font-size:38px;line-height:1}
-  .res span{display:block;font-size:15px;font-weight:300;margin-top:6px}
-  .res small{display:block;font-size:12px;color:#6b665c;margin-top:2px}
-  .res::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);
-              transform:translateX(-120%);animation:shine 3.2s infinite}
-  .res:nth-child(2)::after{animation-delay:.4s}.res:nth-child(3)::after{animation-delay:.8s}
-  @keyframes shine{40%,100%{transform:translateX(120%)}}
+  .cases{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-radius:20px}
+  .cases::-webkit-scrollbar{display:none}
+  .case{flex:0 0 100%;scroll-snap-align:center;background:var(--cream);color:var(--ink);border-radius:20px;overflow:hidden;position:relative}
+  .case .ph{position:relative;aspect-ratio:4/3;overflow:hidden;background:#222}
+  .case img{width:100%;height:100%;object-fit:cover;display:block}
+  .case .ph::after{content:"";position:absolute;inset:auto 0 0 0;height:45%;background:linear-gradient(transparent,rgba(0,0,0,.55))}
+  .case .who{position:absolute;left:14px;bottom:12px;z-index:1;color:#fff;font-family:var(--f-title);font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+  .case .body{padding:18px 18px 20px}
+  .case strong{display:block;font-family:var(--f-title);font-weight:700;font-size:24px;line-height:1.15}
+  .case span{display:inline-flex;align-items:center;gap:6px;justify-content:center;font-size:15px;color:#5f5a50;margin-top:8px}
+  .case span svg{width:15px;height:15px;color:var(--gold)}
+  .dots{display:flex;justify-content:center;gap:6px;margin-top:12px}
+  .dots i{width:7px;height:7px;border-radius:99px;background:var(--line);transition:width .3s,background .3s}
+  .dots i.on{width:22px;background:var(--gold-2)}
   .quote{background:var(--panel);border-radius:var(--r);padding:18px;margin-top:4px}
   .quote p{font-size:15px;line-height:1.5}
   .quote cite{display:block;font-style:normal;font-size:13px;color:var(--gold-2);margin-top:8px;font-family:var(--f-title);font-weight:700}
@@ -220,7 +225,8 @@
     <section class="screen" data-step="prova">
       <div class="tag">Resultados reais</div>
       <h2>Lojas como a sua, <em>com a Oquíron</em></h2>
-      <div class="results" id="results"></div>
+      <div class="cases" id="cases"></div>
+      <div class="dots" id="dots"></div>
       <div id="quotes"></div>
       <div class="label">Lojas que anunciam com a gente</div>
       <div class="marquee"><div class="track" id="marquee"></div></div>
@@ -314,19 +320,20 @@ const CONFIG = {
   WHATSAPP: "5549999414937",  // Gustavo
   CATEGORIA: "Lojas de celular",
 
-  // Tela "Resultados reais" (meio do fluxo). CONFIRMAR números e lojas antes de publicar.
-  // Números abaixo vieram dos nomes dos criativos de vocês (Vídeo 288 iPhones, 558 iPhones em 6 meses, Estático 221 vendas).
-  RESULTADOS: [
-    { numero: 288, prefixo: "", label: "iPhones vendidos", loja: "" },
-    { numero: 558, prefixo: "", label: "iPhones em 6 meses", loja: "" },
-    { numero: 221, prefixo: "", label: "vendas pelo Instagram", loja: "" }
+  // Tela "Resultados reais" (meio do fluxo): foto do cliente + resultado + cidade.
+  // Só aparecem os casos com "resultado" preenchido. Usar números reais.
+  CASOS: [
+    { foto:"assets/clientes/chapecell.jpg", loja:"ChapeCell",       resultado:"+ de 320 iPhones vendidos em 1 mês", local:"Cliente de Chapecó, SC" },
+    { foto:"assets/clientes/mafetto.jpg",   loja:"Mafetto Imports", resultado:"", local:"Cliente de Lajeado, RS" },
+    { foto:"assets/clientes/loja-2.jpg",    loja:"",                resultado:"", local:"" },
+    { foto:"assets/clientes/loja-3.jpg",    loja:"",                resultado:"", local:"" }
   ],
   // Depoimentos reais (texto do cliente, com autorização). Só aparecem se preenchidos.
   DEPOIMENTOS: [
     // { texto: "...", autor: "Fulano · National Imports" }
   ],
   // Lojas exibidas na faixa animada (só quem autorizou).
-  LOJAS: ["National Imports","DinhoCel","AiCell","Playtech","Águia Cell Shop","InnovaTech","Mafetto Imports"],
+  LOJAS: ["ChapeCell","National Imports","DinhoCel","AiCell","Playtech","Águia Cell Shop","InnovaTech","Mafetto Imports"],
   // Prova curta sob as perguntas.
   CASES: [
     { sigla:"NI", loja:"National Imports", cidade:"Ponta Grossa/PR" },
@@ -362,9 +369,27 @@ if (CONFIG.PIXEL_ID) {
 function px(ev, data, opts){ if (window.fbq) opts ? fbq(...ev, data || {}, opts) : fbq(...ev, data || {}); }
 
 /* ---------- prova social ---------- */
-$("#results").innerHTML = CONFIG.RESULTADOS.map(r =>
-  `<div class="res"><strong data-count="${r.numero}" data-prefix="${r.prefixo || ""}">${r.prefixo || ""}0</strong>
-   <span>${r.label}</span>${r.loja ? `<small>${r.loja}</small>` : ""}</div>`).join("");
+const PIN = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 00-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 00-7-7zm0 9.5A2.5 2.5 0 1112 6.5a2.5 2.5 0 010 5z"/></svg>';
+const casos = CONFIG.CASOS.filter(c => c.resultado);
+$("#cases").innerHTML = casos.map(c =>
+  `<article class="case"><div class="ph"><img src="${c.foto}" alt="${c.loja}" loading="lazy">${c.loja ? `<div class="who">${c.loja}</div>` : ""}</div>
+   <div class="body"><strong>${c.resultado}</strong>${c.local ? `<span>${PIN}${c.local}</span>` : ""}</div></article>`).join("");
+$("#dots").innerHTML = casos.length > 1 ? casos.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("") : "";
+const casesEl = $("#cases");
+casesEl.addEventListener("scroll", () => {
+  const i = Math.round(casesEl.scrollLeft / casesEl.clientWidth);
+  document.querySelectorAll("#dots i").forEach((d, k) => d.classList.toggle("on", k === i));
+}, { passive:true });
+let autoTimer = null;
+function startCarousel(){
+  clearInterval(autoTimer); if (casos.length < 2) return;
+  autoTimer = setInterval(() => {
+    if (!screens.prova.classList.contains("active")) return clearInterval(autoTimer);
+    const i = Math.round(casesEl.scrollLeft / casesEl.clientWidth);
+    casesEl.scrollTo({ left: ((i + 1) % casos.length) * casesEl.clientWidth, behavior:"smooth" });
+  }, 3800);
+}
+casesEl.addEventListener("pointerdown", () => clearInterval(autoTimer));
 $("#quotes").innerHTML = CONFIG.DEPOIMENTOS.map(d =>
   `<div class="quote"><p>“${d.texto}”</p><cite>${d.autor}</cite></div>`).join("");
 const lojas = CONFIG.LOJAS.map(l => `<span>${l}</span>`).join("");
@@ -374,14 +399,6 @@ document.querySelectorAll(".proof-slot").forEach(slot => {
   const c = CONFIG.CASES[ci++ % CONFIG.CASES.length]; if (!c) return;
   slot.innerHTML = `<div class="proof"><span class="dot">${c.sigla}</span><span><b>${c.loja}</b> · ${c.cidade}</span><span class="ok">✓</span></div>`;
 });
-function countUp(){
-  document.querySelectorAll("[data-count]").forEach(el => {
-    const end = +el.dataset.count, pre = el.dataset.prefix, t0 = performance.now(), dur = 1100;
-    (function tick(t){ const p = Math.min(1,(t - t0)/dur), e = 1 - Math.pow(1 - p, 3);
-      el.textContent = pre + Math.round(end * e).toLocaleString("pt-BR"); if (p < 1) requestAnimationFrame(tick); })(t0);
-  });
-}
-
 /* ---------- navegação ---------- */
 function show(step, backwards){
   Object.values(screens).forEach(s => s.classList.remove("active","back-anim"));
@@ -393,7 +410,7 @@ function show(step, backwards){
   $("#stepCount").textContent = qi >= 0 ? `${qi + 1} / ${Q_STEPS.length}` : "";
   const lockedBack = step === "intro" || step === "fim" || (state.sentPartial && ORDER.indexOf(step) <= ORDER.indexOf("anuncios"));
   $("#backBtn").classList.toggle("show", !lockedBack);
-  if (step === "prova") countUp();
+  if (step === "prova") startCarousel();
   window.scrollTo(0,0);
   const f = el.querySelector("input.input"); if (f && matchMedia("(pointer:fine)").matches) setTimeout(() => f.focus(), 300);
 }
