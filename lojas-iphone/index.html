@@ -90,6 +90,11 @@
   .input::placeholder{color:#62646c}
   .input:focus{border-color:var(--gold);box-shadow:0 0 0 4px rgba(217,164,67,.12)}
   .input.err{border-color:#e0605a}
+  .row{display:flex;gap:8px}
+  .row .input{flex:1;min-width:0}
+  .row select.input{flex:0 0 96px;appearance:none;-webkit-appearance:none;cursor:pointer;padding-left:10px;padding-right:10px}
+  select.input:invalid{color:#62646c}
+  select.input option{color:#111}
   .msg{font-size:13px;color:#ef8a85;margin-top:6px}
   .msg:empty{display:none}
   .check{display:inline-flex!important;width:auto!important;align-items:center;justify-content:center;gap:10px;margin:6px auto 0;font-size:14px;color:var(--muted);cursor:pointer}
@@ -252,7 +257,10 @@
         <div class="msg" id="waMsg"></div>
       </div>
       <div class="field">
-        <input class="input" id="cidade" type="text" autocomplete="address-level2" placeholder="Cidade da loja">
+        <div class="row">
+          <input class="input" id="cidade" type="text" autocomplete="address-level2" placeholder="Cidade da loja">
+          <select class="input" id="uf" required aria-label="Estado"><option value="" disabled selected>UF</option><option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option><option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option><option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option></select>
+        </div>
         <div class="msg" id="cidadeMsg"></div>
       </div>
       <p class="legal">Ao continuar, você aceita a <a href="https://privacidade.oquirondigital.com.br" target="_blank" rel="noopener">Política de Privacidade</a>.</p>
@@ -472,15 +480,26 @@ function phoneOk(v){ const d = v.replace(/\D/g,""); if (d.length !== 11) return 
   const ddd = +d.slice(0,2); if (ddd < 11 || d[2] !== "9") return false; return !/^(\d)\1+$/.test(d.slice(2)); }
 function field(id, ok, msg){ $("#"+id).classList.toggle("err",!ok); $("#"+id+"Msg").textContent = ok ? "" : msg; return ok; }
 ["nome","cidade"].forEach(id => $("#"+id).addEventListener("input", e => { e.target.classList.remove("err"); $("#"+id+"Msg").textContent=""; }));
+$("#uf").addEventListener("change", () => { $("#uf").classList.remove("err"); $("#uf").dataset.manual = "1"; $("#cidadeMsg").textContent=""; });
+// Sugere o estado pelo DDD do WhatsApp (a pessoa pode trocar)
+const DDD_UF = {PR:[41,42,43,44,45,46],SC:[47,48,49],RS:[51,53,54,55],SP:[11,12,13,14,15,16,17,18,19],MS:[67],MT:[65,66],GO:[61,62,64],DF:[],MG:[31,32,33,34,35,37,38],RJ:[21,22,24],ES:[27,28],BA:[71,73,74,75,77],SE:[79],AL:[82],PE:[81,87],PB:[83],RN:[84],CE:[85,88],PI:[86,89],MA:[98,99],PA:[91,93,94],AP:[96],AM:[92,97],RR:[95],AC:[68],RO:[69],TO:[63]};
+wa.addEventListener("input", () => {
+  const d = wa.value.replace(/\D/g,""), uf = $("#uf");
+  if (d.length < 2 || uf.dataset.manual) return;
+  const ddd = +d.slice(0,2), achou = Object.keys(DDD_UF).find(k => DDD_UF[k].indexOf(ddd) >= 0);
+  if (achou) { uf.value = achou; uf.classList.remove("err"); }
+});
 $("#contatoNext").addEventListener("click", () => {
-  const nome = $("#nome").value.trim(), cidade = $("#cidade").value.trim();
+  const nome = $("#nome").value.trim(), cidade = $("#cidade").value.trim(), uf = $("#uf").value;
   const ok = [
     field("nome", nome.length >= 2 && /[a-zà-ú]/i.test(nome), "Digite seu nome."),
     field("wa", phoneOk(wa.value), "Confere o número com DDD."),
     field("cidade", cidade.length >= 3, "Digite a cidade.")
   ].every(Boolean);
-  if (!ok) return;
-  state.contato = { nome, whatsapp:"+55" + wa.value.replace(/\D/g,""), cidade };
+  $("#uf").classList.toggle("err", !uf);
+  if (ok && !uf) $("#cidadeMsg").textContent = "Escolha o estado.";
+  if (!ok || !uf) return;
+  state.contato = { nome, whatsapp:"+55" + wa.value.replace(/\D/g,""), cidade: cidade.replace(/[\s,\/-]+(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\.?$/i, "") + "/" + uf, uf };
   finish();
 });
 document.querySelectorAll("#nome,#wa,#cidade").forEach(i => i.addEventListener("keydown", e => { if (e.key === "Enter") $("#contatoNext").click(); }));
