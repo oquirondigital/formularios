@@ -317,8 +317,14 @@
    ========================================================= */
 const CONFIG = {
   WEBHOOK_URL: "https://n8n.oquirondigital.com.br/webhook/form-lojas", // n8n: CRM · Formulário próprio (lojas de iPhone)
+  WEBHOOK_CLIQUE: "https://n8n.oquirondigital.com.br/webhook/form-lojas-clique", // n8n: CRM · Clique no WhatsApp (formulário próprio)
   PIXEL_ID: "1157479061759638", // conjunto de dados "Oquíron Digital {100%}"
-  WHATSAPP: "5549999414937",  // Gustavo
+  // Quem atende o lead. A campanha escolhe pelo link: ?resp=gustavo ou ?resp=eduardo (sem nada = PADRAO)
+  RESPONSAVEIS: {
+    eduardo: { nome: "Eduardo", whatsapp: "5549991764543" },
+    gustavo: { nome: "Gustavo", whatsapp: "5549999414937" }
+  },
+  RESPONSAVEL_PADRAO: "eduardo",
   CATEGORIA: "Lojas de celular",
 
   // Tela "Resultados reais" (meio do fluxo): foto do cliente + resultado + cidade.
@@ -350,6 +356,7 @@ const qs = new URLSearchParams(location.search), tracking = {};
 ["utm_source","utm_medium","utm_campaign","utm_content","utm_term","fbclid","ad_id","adset_id","campaign_id"]
   .forEach(k => { if (qs.get(k)) tracking[k] = qs.get(k); });
 function cookie(n){ const m = document.cookie.match("(^|;)\\s*" + n + "=([^;]+)"); return m ? m[2] : ""; }
+const RESP = CONFIG.RESPONSAVEIS[String(qs.get("resp") || "").toLowerCase()] || CONFIG.RESPONSAVEIS[CONFIG.RESPONSAVEL_PADRAO];
 function fbc(){ const c = cookie("_fbc"); return c || (tracking.fbclid ? "fb.1." + Date.now() + "." + tracking.fbclid : ""); }
 
 /* ---------- Meta Pixel (opcional) ---------- */
@@ -491,17 +498,27 @@ function sugestao(){
 /* ---------- envio ---------- */
 function payload(etapa){
   return { lead_id:state.lead_id, etapa, enviado_em:new Date().toISOString(), origem:"pagina-formulario", categoria:CONFIG.CATEGORIA,
-    contato:state.contato, respostas:state.answers, sugestao_classificacao:sugestao(),
+    contato:state.contato, respostas:state.answers, sugestao_classificacao:sugestao(), responsavel:RESP.nome,
     rastreio:{ ...tracking, fbp:cookie("_fbp"), fbc:fbc(), pagina:location.href.split("?")[0], user_agent:navigator.userAgent } };
 }
 // Envia como formulário (campo "payload"): é um envio "simples", sem preflight de CORS, e funciona com sendBeacon.
+function post(dados, url){
+  url = url || CONFIG.WEBHOOK_URL;
+  if (!url) { console.info("[form] webhook vazio — payload:", dados); return; }
+  const body = new URLSearchParams({ payload: JSON.stringify(dados) });
+  let ok = false;
+  try { ok = navigator.sendBeacon && navigator.sendBeacon(url, body); } catch(e) {}
+  if (!ok) { try { fetch(url, { method:"POST", mode:"no-cors", body, keepalive:true }); } catch(e) {} }
+}
 function send(){
   if (state.sent) return; state.sent = true;
-  const body = new URLSearchParams({ payload: JSON.stringify(payload("completo")) });
-  if (!CONFIG.WEBHOOK_URL) { console.info("[form] WEBHOOK_URL vazio — payload:", payload("completo")); return; }
-  let ok = false;
-  try { ok = navigator.sendBeacon && navigator.sendBeacon(CONFIG.WEBHOOK_URL, body); } catch(e) {}
-  if (!ok) { try { fetch(CONFIG.WEBHOOK_URL, { method:"POST", mode:"no-cors", body, keepalive:true }); } catch(e) {} }
+  post(payload("completo"));
+}
+// Clique em "Chamar agora": marca o lead como quente no CRM e avisa o grupo (só a primeira vez)
+function cliqueWhats(){
+  if (state.clicou) return; state.clicou = true;
+  px(["trackCustom","CliqueWhatsApp"], { content_name:"Form Lojas iPhone", responsavel:RESP.nome }, { eventID: state.lead_id + "-wa" });
+  post({ lead_id:state.lead_id, etapa:"clique_whatsapp", responsavel:RESP.nome, contato:{ nome:state.contato.nome } }, CONFIG.WEBHOOK_CLIQUE);
 }
 
 function finish(){
@@ -511,7 +528,8 @@ function finish(){
   $("#fimTitulo").textContent = `Recebemos, ${state.contato.nome.split(" ")[0]}!`;
   const igTxt = state.answers.instagram ? ` da ${state.answers.instagram}` : "";
   const msg = `Olá! Sou ${state.contato.nome}${igTxt}, de ${state.contato.cidade}. Acabei de responder o formulário e quero a análise da minha loja.`;
-  $("#waBtn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}`;
+  $("#waBtn").href = `https://wa.me/${RESP.whatsapp}?text=${encodeURIComponent(msg)}`;
+  $("#waBtn").addEventListener("click", cliqueWhats);
   go("fim");
 }
 </script>
