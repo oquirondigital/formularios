@@ -133,6 +133,12 @@
   .case span svg{width:13px;height:13px;color:var(--gold-2)}
   .case strong{display:block;font-family:var(--f-title);font-weight:700;font-size:23px;line-height:1.18;color:#fff;text-wrap:balance;
                text-shadow:0 2px 14px rgba(0,0,0,.6)}
+  .cases.mini{margin-top:4px}
+  .cases.mini .case{height:118px;border-radius:14px}
+  .cases.mini .case .body{padding:10px 16px}
+  .cases.mini .case span{font-size:12px;margin-bottom:6px}
+  .cases.mini .case strong{font-size:17px}
+  .cases.mini + .dots{margin:8px 0 14px}
   .dots{display:flex;justify-content:center;gap:6px;margin-top:12px}
   .dots i{width:7px;height:7px;border-radius:99px;background:var(--line);transition:width .3s,background .3s}
   .dots i.on{width:22px;background:var(--gold-2)}
@@ -192,23 +198,12 @@
       </div>
     </section>
 
-    <!-- 2 · FUNÇÃO -->
-    <section class="screen" data-step="funcao">
-      <h2>Sua função na loja?</h2>
-      <div class="opts" data-field="funcao">
-        <button class="opt" data-value="dono">Dono(a) ou sócio(a)</button>
-        <button class="opt" data-value="gerente">Gerente / marketing</button>
-        <button class="opt" data-value="funcionario">Funcionário(a)</button>
-      </div>
-    </section>
-
-    <!-- 3 · COMO VENDE -->
-    <section class="screen" data-step="canal">
-      <h2>Como a loja vende hoje?</h2>
-      <div class="opts" data-field="canal">
-        <button class="opt" data-value="fisica">Loja física</button>
-        <button class="opt" data-value="online">Só Instagram / WhatsApp</button>
-        <button class="opt" data-value="ambos">Os dois</button>
+    <!-- 2 · LOJA FÍSICA -->
+    <section class="screen" data-step="fisica">
+      <h2>Possui loja física?</h2>
+      <div class="opts" data-field="fisica">
+        <button class="opt" data-value="sim">Sim</button>
+        <button class="opt" data-value="nao">Não</button>
       </div>
     </section>
 
@@ -223,19 +218,9 @@
       </div>
     </section>
 
-    <!-- PROVA · RESULTADOS (meio do fluxo) -->
-    <section class="screen" data-step="prova">
-      <div class="tag">Resultados reais</div>
-      <h2>Lojas como a sua, <em>com a Oquíron</em></h2>
-      <div class="cases" id="cases"></div>
-      <div class="dots" id="dots"></div>
-      <div id="quotes"></div>
-      <button class="btn" data-next>Continuar</button>
-    </section>
-
     <!-- 5 · INSTAGRAM -->
     <section class="screen" data-step="instagram">
-      <h2>Qual o @ da sua loja?</h2>
+      <h2>Qual o Instagram <em>da sua loja?</em></h2>
       <p class="sub">Vamos analisar antes de conversar.</p>
       <div class="field">
         <input class="input" id="ig" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="@minhaloja">
@@ -248,6 +233,8 @@
     <!-- 6 · CONTATO -->
     <section class="screen" data-step="contato">
       <h2>Para onde mandamos <em>a análise?</em></h2>
+      <div class="cases mini" id="cases"></div>
+      <div class="dots" id="dots"></div>
       <div class="field">
         <input class="input" id="nome" type="text" autocomplete="name" placeholder="Seu nome">
         <div class="msg" id="nomeMsg"></div>
@@ -276,18 +263,6 @@
         <button class="opt" data-value="parou">Já investi, mas parei</button>
         <button class="opt" data-value="nunca">Nunca investi</button>
       </div>
-    </section>
-
-    <!-- 8 · DESAFIO (opcional) -->
-    <section class="screen" data-step="desafio">
-      <h2>Maior desafio hoje?</h2>
-      <div class="opts" data-field="desafio">
-        <button class="opt" data-value="poucas_vendas_ig">Poucas vendas pelo Instagram</button>
-        <button class="opt" data-value="anuncio_nao_vende">Anúncio que não traz venda</button>
-        <button class="opt" data-value="depende_indicacao">Só vendo por indicação</button>
-        <button class="opt" data-value="crescer">Crescer ou abrir outra loja</button>
-      </div>
-      <button class="btn ghost" id="skipDesafio">Pular</button>
     </section>
 
     <!-- FIM -->
@@ -351,8 +326,8 @@ const CONFIG = {
 };
 
 /* ========================================================= */
-const ORDER = ["intro","motivo","funcao","canal","volume","prova","instagram","anuncios","desafio","contato"];
-const Q_STEPS = ["motivo","funcao","canal","volume","instagram","anuncios","desafio","contato"];
+const ORDER = ["intro","motivo","fisica","volume","instagram","anuncios","contato"];
+const Q_STEPS = ["motivo","fisica","volume","instagram","anuncios","contato"];
 const state = {
   lead_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
   answers:{}, contato:{}, sent:false, history:["intro"]
@@ -393,14 +368,13 @@ let autoTimer = null;
 function startCarousel(){
   clearInterval(autoTimer); if (casos.length < 2) return;
   autoTimer = setInterval(() => {
-    if (!screens.prova.classList.contains("active")) return clearInterval(autoTimer);
+    if (!screens.contato.classList.contains("active")) return clearInterval(autoTimer);
     const i = Math.round(casesEl.scrollLeft / casesEl.clientWidth);
     casesEl.scrollTo({ left: ((i + 1) % casos.length) * casesEl.clientWidth, behavior:"smooth" });
   }, 3800);
 }
 casesEl.addEventListener("pointerdown", () => clearInterval(autoTimer));
-$("#quotes").innerHTML = CONFIG.DEPOIMENTOS.map(d =>
-  `<div class="quote"><p>“${d.texto}”</p><cite>${d.autor}</cite></div>`).join("");
+
 /* ---------- navegação ---------- */
 function show(step, backwards){
   Object.values(screens).forEach(s => s.classList.remove("active","back-anim"));
@@ -412,7 +386,7 @@ function show(step, backwards){
   $("#stepCount").textContent = qi >= 0 ? `${qi + 1} / ${Q_STEPS.length}` : "";
   const lockedBack = step === "intro" || step === "fim";
   $("#backBtn").classList.toggle("show", !lockedBack);
-  if (step === "prova") startCarousel();
+  if (step === "contato") startCarousel();
   window.scrollTo(0,0);
   const f = el.querySelector("input.input"); if (f && matchMedia("(pointer:fine)").matches) setTimeout(() => f.focus(), 300);
 }
@@ -455,7 +429,6 @@ $("#saidaVoltar").addEventListener("click", () => { state.history.pop(); show("m
 $("#saidaIgVoltar").addEventListener("click", () => {
   noIg.checked = false; igRefresh(); state.history.pop(); show("instagram", true);
 });
-$("#skipDesafio").addEventListener("click", () => { state.answers.desafio = "pulou"; next(); });
 
 /* ---------- Instagram ---------- */
 const JUNK = new Set(["sim","nao","não","ok","teste","test","nenhum","nenhuma","naotenho","nãotenho","obrigado","obrigada",
@@ -524,9 +497,8 @@ function sugestao(){
   const a = state.answers;
   if (a.instagram_suspeito) return "descartar";
   if (a.volume === "menos_5") return "C";
-  if (a.funcao === "funcionario" && a.sem_instagram) return "C";
-  if ((a.funcao === "dono" || a.funcao === "gerente") && !a.sem_instagram) return "A";
-  return "B";
+  if (a.fisica === "nao" || a.sem_instagram) return "B";
+  return "A";
 }
 
 /* ---------- envio ---------- */
