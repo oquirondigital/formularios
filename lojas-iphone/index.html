@@ -189,15 +189,6 @@
       <div class="time">Menos de 1 minuto</div>
     </section>
 
-    <!-- 1 · MOTIVO -->
-    <section class="screen" data-step="motivo">
-      <h2>O que te trouxe aqui?</h2>
-      <div class="opts" data-field="motivo">
-        <button class="opt" data-value="loja">Tenho uma loja e quero vender mais</button>
-        <button class="opt" data-value="sem_loja">Não tenho loja</button>
-      </div>
-    </section>
-
     <!-- 2 · LOJA FÍSICA -->
     <section class="screen" data-step="fisica">
       <h2>Possui loja física?</h2>
@@ -209,7 +200,7 @@
 
     <!-- 4 · VOLUME -->
     <section class="screen" data-step="volume">
-      <h2>Aparelhos vendidos <em>por mês?</em></h2>
+      <h2>Quantos aparelhos sua loja <em>vende por mês?</em></h2>
       <div class="opts" data-field="volume">
         <button class="opt" data-value="menos_5">Menos de 5</button>
         <button class="opt" data-value="5_15">De 5 a 15</button>
@@ -232,7 +223,8 @@
 
     <!-- 6 · CONTATO -->
     <section class="screen" data-step="contato">
-      <h2>Para onde mandamos <em>a análise?</em></h2>
+      <h2>Cadastre <em>seus dados</em></h2>
+      <p class="sub">Entraremos em contato em seguida.</p>
       <div class="cases mini" id="cases"></div>
       <div class="dots" id="dots"></div>
       <div class="field">
@@ -274,13 +266,6 @@
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1-.2.3-.8.9-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5.1 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 00-8.6 15.1L2 22l5-1.3A10 10 0 1012 2z"/></svg>
         Chamar agora
       </a>
-    </section>
-
-    <!-- SAÍDA · NÃO É LOJA -->
-    <section class="screen" data-step="saida">
-      <h2>Obrigado!</h2>
-      <p class="sub">Este formulário é para donos de loja de celular.<br>Somos uma agência de anúncios e não vendemos aparelhos.</p>
-      <button class="btn ghost" id="saidaVoltar">Marquei errado, voltar</button>
     </section>
 
     <!-- SAÍDA · SEM INSTAGRAM -->
@@ -326,8 +311,8 @@ const CONFIG = {
 };
 
 /* ========================================================= */
-const ORDER = ["intro","motivo","fisica","volume","instagram","anuncios","contato"];
-const Q_STEPS = ["motivo","fisica","volume","instagram","anuncios","contato"];
+const ORDER = ["intro","fisica","volume","instagram","anuncios","contato"];
+const Q_STEPS = ["fisica","volume","instagram","anuncios","contato"];
 const state = {
   lead_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
   answers:{}, contato:{}, sent:false, history:["intro"]
@@ -420,12 +405,10 @@ document.querySelectorAll(".opts").forEach(group => {
     group.querySelectorAll(".opt").forEach(o => o.classList.remove("sel"));
     btn.classList.add("sel"); state.answers[field] = btn.dataset.value;
     setTimeout(() => {
-      if (field === "motivo" && btn.dataset.value !== "loja") { go("saida"); return; }
       next();
     }, 240);
   }));
 });
-$("#saidaVoltar").addEventListener("click", () => { state.history.pop(); show("motivo", true); });
 $("#saidaIgVoltar").addEventListener("click", () => {
   noIg.checked = false; igRefresh(); state.history.pop(); show("instagram", true);
 });
