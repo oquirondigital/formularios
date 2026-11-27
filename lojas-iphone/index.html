@@ -326,6 +326,7 @@
 const CONFIG = {
   WEBHOOK_URL: "https://n8n.oquirondigital.com.br/webhook/form-lojas", // n8n: CRM · Formulário próprio (lojas de iPhone)
   WEBHOOK_CLIQUE: "https://n8n.oquirondigital.com.br/webhook/form-lojas-clique", // n8n: CRM · Clique no WhatsApp (formulário próprio)
+  WEBHOOK_FUNIL: "https://n8n.oquirondigital.com.br/webhook/form-lojas-funil", // n8n: CRM · Funil do formulário próprio (passos)
   PIXEL_ID: "1157479061759638", // conjunto de dados "Oquíron Digital {100%}"
   // Quem atende o lead. A campanha escolhe pelo link: ?resp=gustavo ou ?resp=eduardo (sem nada = PADRAO)
   RESPONSAVEIS: {
@@ -415,7 +416,20 @@ function show(step, backwards){
   window.scrollTo(0,0);
   const f = el.querySelector("input.input"); if (f && matchMedia("(pointer:fine)").matches) setTimeout(() => f.focus(), 300);
 }
-function go(step){ state.history.push(step); show(step); }
+function go(step){ state.history.push(step); show(step); passo(step); }
+// Registra cada tela vista (uma vez por visita) para saber onde as pessoas desistem
+const passosVistos = new Set();
+function passo(nome, detalhe){
+  const chave = nome + (detalhe ? ":" + detalhe : "");
+  if (passosVistos.has(chave) || !CONFIG.WEBHOOK_FUNIL) return; passosVistos.add(chave);
+  try {
+    post({ lead_id:state.lead_id, passo:nome, detalhe:detalhe || "", campanha:qs.get("utm_campaign") || "",
+           anuncio:qs.get("utm_content") || "", resp:RESP.nome }, CONFIG.WEBHOOK_FUNIL);
+  } catch(e) {}
+}
+window.addEventListener("error", e => passo("erro", String((e && e.message) || "erro").slice(0,200) + " @" + ((e && e.lineno) || "")));
+window.addEventListener("unhandledrejection", e => passo("erro", "promise: " + String((e && e.reason) || "").slice(0,200)));
+passo("abriu");
 function next(){ const cur = state.history[state.history.length - 1]; go(ORDER[ORDER.indexOf(cur) + 1] || "fim"); }
 $("#backBtn").addEventListener("click", () => {
   if (state.history.length <= 1) return; state.history.pop(); show(state.history[state.history.length - 1], true);
@@ -459,6 +473,7 @@ function igRefresh(){
   if (noIg.checked){ ig.value=""; ig.disabled=true; ig.classList.remove("err"); $("#igMsg").textContent=""; igNext.disabled=false; return; }
   ig.disabled=false; const s = igStatus(ig.value);
   igNext.disabled = !s.ok; ig.classList.toggle("err", !!ig.value && !s.ok); $("#igMsg").textContent = ig.value ? s.msg : "";
+  if (ig.value && !s.ok && s.msg) passo("invalido", "instagram");
 }
 ig.addEventListener("input", igRefresh); noIg.addEventListener("change", igRefresh);
 ig.addEventListener("keydown", e => { if (e.key === "Enter" && !igNext.disabled) igNext.click(); });
@@ -478,7 +493,7 @@ wa.addEventListener("input", () => {
 });
 function phoneOk(v){ const d = v.replace(/\D/g,""); if (d.length !== 11) return false;
   const ddd = +d.slice(0,2); if (ddd < 11 || d[2] !== "9") return false; return !/^(\d)\1+$/.test(d.slice(2)); }
-function field(id, ok, msg){ $("#"+id).classList.toggle("err",!ok); $("#"+id+"Msg").textContent = ok ? "" : msg; return ok; }
+function field(id, ok, msg){ $("#"+id).classList.toggle("err",!ok); $("#"+id+"Msg").textContent = ok ? "" : msg; if (!ok) passo("invalido", id); return ok; }
 ["nome","cidade"].forEach(id => $("#"+id).addEventListener("input", e => { e.target.classList.remove("err"); $("#"+id+"Msg").textContent=""; }));
 $("#uf").addEventListener("change", () => { $("#uf").classList.remove("err"); $("#uf").dataset.manual = "1"; $("#cidadeMsg").textContent=""; });
 // Sugere o estado pelo DDD do WhatsApp (a pessoa pode trocar)
